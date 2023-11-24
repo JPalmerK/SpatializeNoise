@@ -1,0 +1,6 @@
+"0","look1<-vgram( loc, GPSdf$NL, N=15, lon.lat=TRUE, type=""covariogram"")"
+"0","look2<-vgram( loc, GPSdf$medianNL-GPSdf$NL, "
+"0","              N=15, lon.lat=TRUE, type=""covariogram"")"
+"0",""
+"0","brk<- seq( 0, 600,(1 + 1) ) # will give 25 bins."
+"0","plot(look1, breaks=brk, col=4)"

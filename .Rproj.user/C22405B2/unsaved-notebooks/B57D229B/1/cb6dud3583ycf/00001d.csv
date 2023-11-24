@@ -1,0 +1,21 @@
+"0","
+SEobs <- predictSE.mKrig(obj)
+SEout <- predictSE(obj, xnew=full.grid)
+
+lookSE <- as.surface(full.grid, SEout)
+{surface(lookSE,col=topo.colors(100))
+title(""Kriging Uncertainty"")
+points(loc[,1],loc[,2],col=""magenta"",bg=""white"",pch=21)}
+{drape.plot(lookSE, border=NA, aRange=160, phi=55,col=topo.colors(100)) -> dp2
+title(""Drape Plot"")
+pushpin(loc[,1],loc[,2],SEobs,dp2, cex=0.4, col=""white"")}
+"
+"0",""
+"0",""
+"0","SEobs.norm <- predictSE.mKrig(obj.norm)"
+"0","SEout.norm <- predictSE(obj.norm, xnew=full.grid)"
+"0",""
+"0","lookSE.norm <- as.surface(full.grid, SEout.norm)"
+"0","{surface(lookSE.norm,col=topo.colors(100))"
+"0","title(""Kriging Uncertainty"")"
+"0","points(loc[,1],loc[,2],col=""magenta"",bg=""white"",pch=21)}"

@@ -1,0 +1,31 @@
+{
+    "id": "ACCBF21C",
+    "path": "~/GitHub/NL_spatialize/SpatializeNoise/SpatializedNoise_thoughtprocess.Rmd",
+    "project_path": "SpatializedNoise_thoughtprocess.Rmd",
+    "type": "r_markdown",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1700785850063.0,
+    "source_on_save": false,
+    "relative_order": 4,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "153,50",
+        "scrollLine": "146",
+        "rmdVisualMode": "true",
+        "rmdVisualWrapConfigured": "true",
+        "docOutlineVisible": "1",
+        "rmdVisualCollapsedChunks": "",
+        "rmdVisualModeLocation": "5927:1300"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1700785743,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1700785855194,
+    "read_only": false,
+    "read_only_alternatives": []
+}

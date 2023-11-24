@@ -1,0 +1,3 @@
+"0","{drape.plot(lookSE.norm, border=NA, phi=55,col=topo.colors(100)) -> dp2"
+"0","title(""Drape Plot"")"
+"0","pushpin(loc[,1],loc[,2],SEobs,dp2, cex=0.4, col=""white"")}"

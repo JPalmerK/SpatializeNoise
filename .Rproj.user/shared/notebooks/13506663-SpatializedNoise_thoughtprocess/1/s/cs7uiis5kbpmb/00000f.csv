@@ -1,0 +1,96 @@
+"0","rm(list = ls())"
+"0","library(mgcv)"
+"2","Loading required package: nlme
+"
+"2","This is mgcv 1.8-41. For overview type 'help(""mgcv-package"")'.
+"
+"0","library(dplyr)"
+"2","Warning: package ‘dplyr’ was built under R version 4.2.3"
+"2","
+Attaching package: ‘dplyr’
+
+"
+"2","The following object is masked from ‘package:nlme’:
+
+    collapse
+
+"
+"2","The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+"
+"2","The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+"
+"0","library(lubridate)"
+"2","
+Attaching package: ‘lubridate’
+
+"
+"2","The following objects are masked from ‘package:base’:
+
+    date, intersect, setdiff, union
+
+"
+"0","library(viridis)"
+"2","Loading required package: viridisLite
+"
+"2","Warning: package ‘viridisLite’ was built under R version 4.2.3"
+"0","library(ggplot2)"
+"2","Warning: package ‘ggplot2’ was built under R version 4.2.3"
+"0","load('Adrift_GPS_2023.rds')"
+"0","load('Adrift_NL_2023_500Hz.rds')"
+"0",""
+"0","# Link the gps and the noise levels"
+"0","noiseDf$Lon = NaN"
+"0","noiseDf$Lat = NaN"
+"0",""
+"0","DriftNames = unique(GPSdf$DriftName)"
+"0","GPSdf$NL<- NaN"
+"0",""
+"0","for(drift in DriftNames){"
+"0","  GPSsub = subset(GPSdf, DriftName == drift)"
+"0","  NLsub =  subset(noiseDf, DriftName==drift)"
+"0","  "
+"0","  UTMflon <- approxfun(GPSsub$UTC, GPSsub$Longitude)"
+"0","  UTMflat <- approxfun(GPSsub$UTC, GPSsub$Latitude)"
+"0","  NLf<-approxfun(NLsub$datetime_posix, NLsub$TOL_500, na.rm = TRUE)"
+"0","  "
+"0","  ##############################################################"
+"0","  # Calculate the range from the whale to the GPS, TDOA and RL"
+"0","  ############################################################"
+"0","  "
+"0","  # Lat/lon/ of the drift when the call was produced"
+"0","  noiseDf$Lon[noiseDf$DriftName==drift] =UTMflon(NLsub$datetime_posix)"
+"0","  noiseDf$Lat[noiseDf$DriftName==drift] = UTMflat(NLsub$datetime_posix)"
+"0","  GPSdf$NL[GPSdf$DriftName==drift] <-NLf(GPSsub$UTC)"
+"0","}"
+"0",""
+"0","colnames(noiseDf)[2]<-'NL'"
+"0",""
+"0","# Clear out any NA values"
+"0","noiseDf = noiseDf[!is.na(noiseDf$Lat),]"
+"0",""
+"0","# add seconds since start as an integer for the gam"
+"0","noiseDf$seconds = as.numeric(noiseDf$datetime_posix-median(noiseDf$datetime_posix))"
+"0",""
+"0","# there are some duplicated values for some reason."
+"0","duplicatedIdx = which(duplicated(noiseDf$Lon))"
+"0","noiseDf$Lon[duplicatedIdx]=noiseDf$Lon[duplicatedIdx]+"
+"0","  rnorm(n = length(duplicatedIdx))/1000"
+"0","noiseDf$Lat[duplicatedIdx]=noiseDf$Lat[duplicatedIdx]+"
+"0","  rnorm(n = length(duplicatedIdx))/1000"
+"0",""
+"0","duplicatedIdx = which(duplicated(GPSdf$Lon))"
+"0","GPSdf$Lon[duplicatedIdx]=GPSdf$Lon[duplicatedIdx]+"
+"0","  rnorm(n = length(duplicatedIdx))/1000"
+"0","GPSdf$Lat[duplicatedIdx]=GPSdf$Lat[duplicatedIdx]+"
+"0","  rnorm(n = length(duplicatedIdx))/1000"
+"0",""
+"0","ggplot(GPSdf)+"
+"0","  geom_point(aes(x=Lon, y=Lat, color=NL))+"
+"0","  scale_color_viridis_c(option='plasma')"
+"0",""
