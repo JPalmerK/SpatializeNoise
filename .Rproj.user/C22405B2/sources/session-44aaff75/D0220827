@@ -1,0 +1,26 @@
+{
+    "id": "D0220827",
+    "path": "~/GitHub/SWFSC Processing/WormPlotMultNoiseLevels.R",
+    "project_path": null,
+    "type": "r_source",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1705958759918.0,
+    "source_on_save": false,
+    "relative_order": 11,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "75,3",
+        "scrollLine": "66"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1698252425,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1698252425,
+    "read_only": false,
+    "read_only_alternatives": []
+}

@@ -1,7 +1,0 @@
-"0","library(fields)"
-"0","loc<-cbind(GPSdf$Lon,GPSdf$Lat) #locations"
-"0","obj.norm<-spatialProcess(loc,GPSdf$NL-GPSdf$medianNL, Distance = ""rdist.earth"","
-"0","                    cov.args = list(Covariance =""Exponential"") )"
-"2","Warning: Numerical hessian from optim indicates
-                   MLE is not a maximum"
-"0","surface(obj.norm,xlab = 'Longitude', ylab='Latitude', main = 'Modelled Normalized NL, 500 Hz')"

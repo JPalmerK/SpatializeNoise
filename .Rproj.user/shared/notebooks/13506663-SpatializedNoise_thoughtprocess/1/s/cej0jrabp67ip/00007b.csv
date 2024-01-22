@@ -1,0 +1,2 @@
+"0","points(x = DataDuring$Lon, y= DataDuring$Lat, col = ""black"", pch = 16,"
+"0","       main = 'Storm Data')"

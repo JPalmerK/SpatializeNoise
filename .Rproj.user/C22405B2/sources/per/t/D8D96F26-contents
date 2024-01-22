@@ -1,0 +1,373 @@
+---
+title: "R Notebook"
+output:
+  word_document: default
+  html_notebook: default
+---
+
+# Specializing Noise
+
+A principle benefit of the drifting array is it's ability to cover a considerable distance over the short deployment duration. In this portion of the report we ask whether it's possible to create a noise map of the area.
+
+The primary challenge in addressing this question is decoupling the space and time components as the units drift. Consider that the low frequency domain is dominated by atmospheric signals, shipping, and the calls of very loud animals including fin and blue whales. These sounds propagate tens to hundreds of miles resulting in highly correlated ambient noise metrics in time.
+
+Lets first load the data and plot what we see.
+
+```{r}
+rm(list = ls())
+library(mgcv)
+library(dplyr)
+library(lubridate)
+library(viridis)
+library(ggplot2)
+library(sf)
+library(sp)
+load('Adrift_GPS_2023.rds')
+load('Adrift_NL_2023_500Hz.rds')
+
+
+# Load the wind lease area
+
+WLA <- st_read(
+  "F:\\GPS_CSV-20230923T045356Z-001\\MorroBay_WEA_2021_11_12.shp")
+WLA = as.data.frame(WLA[[6]][[1]][1])
+colnames(WLA)<-c('UTMx','UTMy')
+
+# Add lat/lon
+# Add UTC coords with the sp package
+cord.dec = SpatialPoints(cbind(WLA$UTMx,WLA$UTMy),
+                         proj4string=CRS("+init=epsg:32610"))
+
+cord.dec = spTransform(cord.dec, CRS("+proj=longlat"))
+WLA$Lon =  coordinates(cord.dec)[,1]
+WLA$Lat =  coordinates(cord.dec)[,2]
+
+
+# Link the gps and the noise levels
+noiseDf$Lon = NaN
+noiseDf$Lat = NaN
+
+DriftNames = unique(GPSdf$DriftName)
+GPSdf$NL<- NaN
+
+for(drift in DriftNames){
+  GPSsub = subset(GPSdf, DriftName == drift)
+  NLsub =  subset(noiseDf, DriftName==drift)
+  
+  UTMflon <- approxfun(GPSsub$UTC, GPSsub$Longitude)
+  UTMflat <- approxfun(GPSsub$UTC, GPSsub$Latitude)
+  NLf<-approxfun(NLsub$datetime_posix, NLsub$TOL_500, na.rm = TRUE)
+  
+  ##############################################################
+  # Calculate the range from the whale to the GPS, TDOA and RL
+  ############################################################
+  
+  # Lat/lon/ of the drift when the call was produced
+  noiseDf$Lon[noiseDf$DriftName==drift] =UTMflon(NLsub$datetime_posix)
+  noiseDf$Lat[noiseDf$DriftName==drift] = UTMflat(NLsub$datetime_posix)
+  GPSdf$NL[GPSdf$DriftName==drift] <-NLf(GPSsub$UTC)
+}
+
+colnames(noiseDf)[2]<-'NL'
+
+# Clear out any NA values
+noiseDf = noiseDf[!is.na(noiseDf$Lat),]
+
+# add seconds since start as an integer for the gam
+noiseDf$seconds = as.numeric(noiseDf$datetime_posix-median(noiseDf$datetime_posix))
+
+# there are some duplicated values for some reason.
+duplicatedIdx = which(duplicated(noiseDf$Lon))
+noiseDf$Lon[duplicatedIdx]=noiseDf$Lon[duplicatedIdx]+
+  rnorm(n = length(duplicatedIdx))/1000
+noiseDf$Lat[duplicatedIdx]=noiseDf$Lat[duplicatedIdx]+
+  rnorm(n = length(duplicatedIdx))/1000
+
+duplicatedIdx = which(duplicated(GPSdf$Lon))
+GPSdf$Lon[duplicatedIdx]=GPSdf$Lon[duplicatedIdx]+
+  rnorm(n = length(duplicatedIdx))/1000
+GPSdf$Lat[duplicatedIdx]=GPSdf$Lat[duplicatedIdx]+
+  rnorm(n = length(duplicatedIdx))/1000
+
+ggplot(GPSdf)+
+  geom_point(aes(x=Lon, y=Lat, color=NL))+
+  scale_color_viridis_c(option='plasma')
+
+```
+
+In this figure, it appears that as the units go south, the ambient noise level increases. This could lead us to think that the southern bit of the survey area is louder than the northern bit. However, recall that a large storm went through the area on March 14th. This could be influencing our background noise and as the buoys were fairly well behaved, spatial and temporal excoriates could be confounded. Look especially at the high noise levels in the northern part of the map recorded by one unit (Drift 49). To investigate temporal correlation, lets plot the noise levels from all units as a function of time.
+
+```{r}
+ ggplot(GPSdf)+
+   geom_line(aes(x= UTC, y=NL, color= DriftName))+
+   ggtitle('Deployment Noise Levels as a function of Time')
+
+```
+
+This figure demonstrates the varying timescales acting on the ambient noise levels without doing much fancy. Large-scale events such as storms impact the entire array (regardless of location) and smaller scale events effect locations differently. We cannot then assume that background noise was stationary in time, we must account for temporal variation in some way.
+
+The simplest method of addressing the large scale events is to simply subtract the hourly median noise level from all the events. This will then leave us with relative noisiness. The below code calculates the median and plots the normalized noise levels.
+
+```{r}
+
+# Calculate the median hourly noise level for each DriftName, day, and hour
+median_hourly_noise<- noiseDf %>%
+  group_by(Date = date(datetime_posix), Hour = hour(datetime_posix)) %>%
+  summarise(medianNL = median(NL, na.rm = TRUE))
+
+noiseDf$Date = date(noiseDf$datetime_posix)
+noiseDf$Hour = hour(noiseDf$datetime_posix)
+
+# Merge the median hourly noise back to the original data frame
+noiseDf <- noiseDf %>%
+  left_join(median_hourly_noise, by = c( "Date", "Hour"))
+
+# Find differences in noise levels and replot
+noiseDf$RelNoise = noiseDf$NL- noiseDf$medianNL
+
+# Larger scale, crashes R, modelling will be done using the smaller grid
+#ggplot(noiseDf)+ geom_line(aes(x= datetime_posix, y=RelNoise, color= DriftName))
+ 
+# But also this dataframe is huge so lets look at the same using only the GPS locations which will making the modelling tennable
+GPSdf$Date = date(GPSdf$UTC)
+GPSdf$Hour = hour(GPSdf$UTC)
+GPSdf <- GPSdf %>%
+  left_join(median_hourly_noise, by = c( "Date", "Hour"))
+
+GPSdf$RelNoise = GPSdf$NL- GPSdf$medianNL
+
+ggplot(GPSdf)+ 
+  geom_line(aes(x= UTC, y=RelNoise, color= DriftName))
+```
+
+That looks much more reasonable. Now we can see that there was actually considerable variation in noise level at the start of the study, when the units were more north, than later in the deployment. We can, and should, no plot this on our deployment map.
+
+```{r}
+ggplot(GPSdf)+
+  geom_point(aes(x=Lon, y=Lat, color=RelNoise))+
+  scale_color_viridis_c(option='plasma')
+```
+
+In this figure we start seeing something more like what the GAM was showing, slightly elevated noise levels in the northwest corner and generally a lot more consistency. We would not expect large swings in median noise levels on the half hour scale. This is a better representation of the spatial element of noise in the 500Hz bin.
+
+We can now use the fields package to fit both the raw data and the normalized noise levels to a surface.
+
+```{r}
+library(fields)
+# loc<-cbind(GPSdf$Lon,GPSdf$Lat) #locations
+# obj<-spatialProcess(loc,GPSdf$NL, Distance = "rdist.earth",
+#                     cov.args = list(Covariance ="Exponential"),
+#                     REML = TRUE)
+# surface(obj,xlab = 'Longitude', ylab='Latitude', 
+#         main = 'Modelled Raw NL, 500 Hz')
+# points(x = GPSdf$Lon, y= GPSdf$Lat, col = "black", pch = 16)
+# 
+# 
+# 
+# obj.norm<-spatialProcess(loc,
+#                          GPSdf$NL-GPSdf$medianNL, 
+#                          Distance = "rdist.earth",
+#                          cov.args = list(Covariance="Exponential"),
+#                          REML = TRUE,
+#                          cov.function = 'stationary.cov')
+# surface(obj.norm,
+#         xlab = 'Longitude', ylab='Latitude', 
+#         main = 'Modelled Normalized NL, 500 Hz')
+# points(x = GPSdf$Lon, y= GPSdf$Lat, col = "black", pch = 16)
+
+
+# Do data before and during the storm
+DataBefore = subset(GPSdf, UTC < as.POSIXct('2023-03-13 12:00:00'))
+DataDuring = subset(GPSdf, UTC > as.POSIXct('2023-03-15 00:00:00') &
+                      UTC < as.POSIXct('2023-03-16 06:00:00'))
+ggplot(DataDuring)+ 
+  geom_line(aes(x= UTC, y=NL, color= DriftName))+
+   ggtitle('Before Storm')
+# Combine the data
+
+
+obj.storm<-spatialProcess(cbind(DataDuring$Lon,DataDuring$Lat),
+                           DataDuring$NL,
+                           Distance = "rdist.earth",
+                           cov.args = list(Covariance ="Exponential"),
+                           REML = TRUE)
+surface(obj.storm,xlab = 'Longitude', ylab='Latitude',
+         main = 'Modelled NL During Storm Event, 500 Hz', ylim = c(35, 35.8), xlim=c(-122.2,-121.4))
+points(x = DataDuring$Lon, y= DataDuring$Lat, col = "black", pch = 16,
+       main = 'Storm Data')
+lines(x= WLA$Lon, y= WLA$Lat, col='Pink')
+
+
+
+obj.before<-spatialProcess(cbind(DataBefore$Lon,DataBefore$Lat),
+                           DataBefore$NL,
+                           Distance = "rdist.earth",
+                           cov.args = list(Covariance ="Exponential"),
+                           REML = TRUE)
+surface(obj.before,xlab = 'Longitude', ylab='Latitude',
+         main = 'Modelled NL Before Storm Event, 500 Hz', ylim = c(35, 35.8), xlim=c(-122.2,-121.4))
+points(x = DataBefore$Lon, y= DataBefore$Lat, col = "black", pch = 16, 
+       main='Before Storm')
+lines(x= WLA$Lon, y= WLA$Lat, col='Pink')
+# 
+# fit <- mKrig(cbind(DataDuring$Lon,DataDuring$Lat),
+#                            DataDuring$NL,
+#              cov.function="wendland.cov", aRange=2,lambda=2,
+#              Distance = "rdist.earth",)
+
+
+
+
+```
+
+We can evaluate spatial and temporal autocorrelation using a '[Variogram](https://vsp.pnnl.gov/help/vsample/Kriging_Variogram.htm#:~:text=Variogram%20Parameters&text=The%20default%20and%20recommended%20first,for%20log%2Dnormally%20distributed%20data.)' in the same package.
+
+"A variogram is a description of the spatial continuity of the data. The experimental variogram is a discrete function calculated using a measure of variability between pairs of points at various distances."
+
+```{r}
+look1<-vgram( loc, GPSdf$NL, N=15, lon.lat=TRUE, type="covariogram")
+look2<-vgram( loc, GPSdf$medianNL-GPSdf$NL, 
+              N=15, lon.lat=TRUE, type="covariogram")
+
+brk<- seq( 0, 600,(1 + 1) ) # will give 25 bins.
+plot(look1, breaks=brk, col=4)
+plot(look2, breaks=brk, col=4)
+
+# We can also plot the residuals
+plot(obj)
+plot(obj.norm)
+```
+
+By normalizing the noise levels, we've brought down the covariance, but it's somewhat unclear the units of the Y axis. This will need further digging. We can also look at the residuals to help define our fit. Here we can again see that normalizng the noise levels seems to bring down the variance considerably; there seems to be a relationship in the raw data between the noise level and the standard deviation of the residuals-which isn't good if memory recalls. This is also worth some discussion.
+
+Last we can use the fields package to look at model uncertainty.
+
+```{r}
+grid.list <- list(lat=seq(min(GPSdf$Lon)-.5,max(GPSdf$Lon)+.5, length.out =100), 
+                  lon=seq(min(GPSdf$Lat)-.5,max(GPSdf$Lat)+.5, length.out =100))
+full.grid <- make.surface.grid(grid.list)
+
+SEobs <- predictSE.mKrig(obj)
+SEout <- predictSE(obj, xnew=full.grid)
+
+lookSE <- as.surface(full.grid, SEout)
+{surface(lookSE,col=topo.colors(100))
+title("Kriging Uncertainty")
+points(loc[,1],loc[,2],col="magenta",bg="white",pch=21)}
+{drape.plot(lookSE, border=NA, aRange=160, phi=55,col=topo.colors(100)) -> dp2
+title("Drape Plot")
+pushpin(loc[,1],loc[,2],SEobs,dp2, cex=0.4, col="white")}
+
+
+SEobs.norm <- predictSE.mKrig(obj.norm)
+SEout.norm <- predictSE(obj.norm, xnew=full.grid)
+
+lookSE.norm <- as.surface(full.grid, SEout.norm)
+{surface(lookSE.norm,col=topo.colors(100))
+title("Kriging Uncertainty")
+points(loc[,1],loc[,2],col="magenta",bg="white",pch=21)}
+{drape.plot(lookSE.norm, border=NA, phi=55,col=topo.colors(100)) -> dp2
+title("Drape Plot")
+pushpin(loc[,1],loc[,2],SEobs,dp2, cex=0.4, col="white")}
+```
+
+Last, lets do the same thing for some higher frequencies
+
+```{r}
+library(here)
+# Add noise level data
+csv_directory='MorroBay Mar 2023 Noise Files'
+csv_files <- list.files(path = csv_directory, pattern = "*.csv", full.names = TRUE)
+dataframes_list <- list()
+
+# Loop through each CSV file load, change name
+for (csv_file in csv_files) {
+  # Read the CSV file
+  df <- read.csv(csv_file, header = TRUE)
+  
+  # Extract the first and eighth columns
+  df <- df[, c("yyyy.mm.ddTHH.MM.SSZ", 'TOL_16000')]
+  colnames(df)<-c('UTC', 'NL')
+  
+  # Extract the first 10 characters from the filename
+  file_name <- substr(basename(csv_file), 1, 10)
+  
+  # Create a 'DriftName' column with the extracted filename
+  df$DriftName <- file_name
+  
+  # Append the dataframe to the list
+  dataframes_list[[file_name]] <- df
+}
+
+# Combine all dataframes into a single dataframe
+noiseDf <- bind_rows(dataframes_list)
+noiseDf$datetime_posix <- as.POSIXct(noiseDf$UTC, 
+                                     format = "%Y-%m-%dT%H:%M:%OSZ",
+                                     tz='UTC')
+
+for(drift in DriftNames){
+  GPSsub = subset(GPSdf, DriftName == drift)
+  NLsub =  subset(noiseDf, DriftName==drift)
+  
+  UTMflon <- approxfun(GPSsub$UTC, GPSsub$Longitude)
+  UTMflat <- approxfun(GPSsub$UTC, GPSsub$Latitude)
+  NLf<-approxfun(NLsub$datetime_posix, NLsub$NL, na.rm = TRUE)
+  
+  ##############################################################
+  # Calculate the range from the whale to the GPS, TDOA and RL
+  ############################################################
+  
+  # Lat/lon/ of the drift when the call was produced
+  noiseDf$Lon[noiseDf$DriftName==drift] =UTMflon(NLsub$datetime_posix)
+  noiseDf$Lat[noiseDf$DriftName==drift] = UTMflat(NLsub$datetime_posix)
+  GPSdf$NL[GPSdf$DriftName==drift] <-NLf(GPSsub$UTC)
+}
+
+colnames(noiseDf)[2]<-'NL'
+
+# Clear out any NA values
+noiseDf = noiseDf[!is.na(noiseDf$Lat),]
+
+# add seconds since start as an integer for the gam
+noiseDf$seconds = as.numeric(noiseDf$datetime_posix-median(noiseDf$datetime_posix))
+
+# there are some duplicated values for some reason.
+duplicatedIdx = which(duplicated(noiseDf$Lon))
+noiseDf$Lon[duplicatedIdx]=noiseDf$Lon[duplicatedIdx]+
+  rnorm(n = length(duplicatedIdx))/1000
+noiseDf$Lat[duplicatedIdx]=noiseDf$Lat[duplicatedIdx]+
+  rnorm(n = length(duplicatedIdx))/1000
+
+duplicatedIdx = which(duplicated(GPSdf$Lon))
+GPSdf$Lon[duplicatedIdx]=GPSdf$Lon[duplicatedIdx]+
+  rnorm(n = length(duplicatedIdx))/1000
+GPSdf$Lat[duplicatedIdx]=GPSdf$Lat[duplicatedIdx]+
+  rnorm(n = length(duplicatedIdx))/1000
+
+ggplot(GPSdf)+
+  geom_point(aes(x=Lon, y=Lat, color=NL))+
+  scale_color_viridis_c(option='plasma')
+
+ggplot(GPSdf)+
+   geom_line(aes(x= UTC, y=NL, color= DriftName))+
+   ggtitle('Deployment Noise Levels as a function of Time')
+
+```
+
+Interesting, in the 16khz band there is the same level of
+
+Make a plot for the time
+
+This has been a relatively quick look at how we can specialize our noise metrics. There is much more than can and should be done. However, for the purpose of the report I think there is maybe one or two more things worth investigating including estimating the predictive power of the method.
+
+Predictive power
+
+1.  Knock out one or more of the sensors
+
+2.  Fit the field models
+
+3.  Used the field models to predict the levels at the knocked-out location
+
+4.  Estimate the error
+
+5.  Do this for one or more knockouts
