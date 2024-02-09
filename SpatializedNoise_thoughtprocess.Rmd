@@ -157,7 +157,7 @@ We can now use the fields package to fit both the raw data and the normalized no
 
 ```{r}
 library(fields)
-# loc<-cbind(GPSdf$Lon,GPSdf$Lat) #locations
+ loc<-cbind(GPSdf$Lon,GPSdf$Lat) #locations
 # obj<-spatialProcess(loc,GPSdf$NL, Distance = "rdist.earth",
 #                     cov.args = list(Covariance ="Exponential"),
 #                     REML = TRUE)
@@ -198,7 +198,8 @@ surface(obj.storm,xlab = 'Longitude', ylab='Latitude',
           xlim = c(-122.2, -121.5), ylim = c(35, 35.8),
          main = 'Modelled NL During Storm Event, 500 Hz')
 lines(WLA$Lon,WLA$Lat,col = 'gold')
-points(x = DataDuring$Lon, y= DataDuring$Lat, col = "black", pch = 16,
+points(x = DataDuring$Lon, y= DataDuring$Lat, cex=.9,
+       col = "black", pch = 16,
        main = 'Storm Data')
 
 
@@ -211,10 +212,11 @@ obj.before<-spatialProcess(cbind(DataBefore$Lon,DataBefore$Lat),
 
 
 surface(obj.before,xlab = 'Longitude', ylab='Latitude',
-        xlim = c(-122.2, -121.5), ylim = c(35, 35.8),
-         main = 'Modelled NL Before Storm Event, 500 Hz')
+        xlim = c(-122.2, -121.5), ylim = c(35.3, 35.8),
+         main = 'Modelled Noise Level Before Storm Events (500 Hz)')
 lines(WLA$Lon,WLA$Lat,col = 'gold')
-points(x = DataBefore$Lon, y= DataBefore$Lat, col = "black", pch = 16, 
+points(x = DataBefore$Lon, y= DataBefore$Lat, cex=0.5, 
+       col = "black", pch = 16, 
        main='Before Storm')
 
 
