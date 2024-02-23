@@ -1,3 +1,0 @@
-"0","ggplot(GPSdf)+"
-"0","  geom_point(aes(x=Lon, y=Lat, color=RelNoise))+"
-"0","  scale_color_viridis_c(option='plasma')"
