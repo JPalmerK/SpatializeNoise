@@ -12,7 +12,8 @@ library(lubridate)
 # Load data, drift GPS, and noise levels pre-process, and wind lease area
 ########################################################################
 # GPS Directory
-csv_directory <- "F:\\GPS_CSV-20230923T045356Z-001\\MorroBay Mar 2023"
+# csv_directory <- "F:\\GPS_CSV-20230923T045356Z-001\\MorroBay Mar 2023"
+csv_directory <- "C:/Users/kaitlin.palmer/Documents/GitHub/NL_spatialize/SpatializeNoise/GPS_CSV-20230923T045356Z-001/MorroBay Mar 2023/"
 
 # List of the csv files
 csv_files <- list.files(path = csv_directory, 
@@ -277,6 +278,23 @@ ggplot(hfNL) +
   scale_fill_distiller(palette = "Spectral",name="Noise Level") +
   xlab("Easting (km)") + ylab("Northing (km)") + 
   theme_bw()
+
+
+
+
+salsa2dlist<-list(fitnessMeasure = 'BIC',
+                  knotgrid = lsknotgrid,
+                  startKnots=20,
+                  minKnots=10,
+                  maxKnots=40,
+                  gap=0, 
+                  splines = c("ns"))
+
+salsa2dOutput<-runSALSA2D(model = hfGLM,
+                          salsa2dlist = salsa2dlist,
+                          d2k=lfdistMats$dataDist,
+                          k2k=lfdistMats$knotDist,
+                          suppress.printout = FALSE)
 
 
 ####################################################

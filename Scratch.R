@@ -499,9 +499,9 @@ x =x[!duplicated(x),]
 #              Covariance="Matern",Distance = 'rdist.earth',
 #              aRange =1.4, lambda = .2)
 # 
-# out3<- mKrig(x,y,
-#              Covariance="Matern",Distance = 'rdist.earth',
-#              aRange =1.408, lambda = 2)
+out3<- mKrig(x,y,
+             Covariance="Matern",Distance = 'rdist.earth',
+             aRange =1.408, lambda = 2)
 # 
 # 
 # out4<- mKrig(x,y,
@@ -518,22 +518,28 @@ x =x[!duplicated(x),]
 #              Covariance="Matern",
 #              Distance = 'rdist.earth',
 #              aRange = 10, lambda = .01)
-
-
-out7<- mKrig(x,y,
-             Covariance="Matern",
-             Distance = 'rdist.earth',
-             aRange = 10, lambda = 2)
+# 
+# 
+# out7<- mKrig(x,y,
+#              Covariance="Matern",
+#              Distance = 'rdist.earth',
+#              aRange = 10, lambda = 2)
+# 
+# 
+# out8<- mKrig(x,y,
+#              Covariance="Matern",
+#              Distance = 'rdist.earth',
+#              aRange = 8, lambda = 1)
 
 # 
 # surface(out)
 # surface(out1)
 # surface(out2)
-# surface(out3)
+# surface(out3) # lowest p-values
 # surface(out4)
 # surface(out5)
 # surface(out6)
-surface(out7) # Best
+# surface(out7) # Best
 
 # #########################################################################
 # run k-fold cross validation
@@ -553,17 +559,15 @@ for(drift in DriftNames){
   y =y[!duplicated(x)]
   x =x[!duplicated(x),]
   
-  
-  out<- mKrig(x, y,
-               Covariance="Matern",
-               Distance = 'rdist.earth',
-               aRange = 10, lambda = 2)
+  out<- mKrig(x,y,
+               Covariance="Matern",Distance = 'rdist.earth',
+               aRange =1.408, lambda = 2)
   
   allNl$Prediction[allNl$DriftName== drift]<- predict(out, kfoldData[[3]])
   
 }
 
-
+allNl$PredictionError = abs(allNl$Prediction - allNl$RelNoise)
 
 
 # #########################################################################
@@ -595,91 +599,95 @@ for(drift in DriftNames){
 #                        cov.args = list(Covariance ="Exponential"))
 # ########################################################################
 
+# 
+# # exponential vs Wendland covariance function
+# tt = as.numeric(telapsed-mean(telapsed))/60
+# 
+# obj.norm <- spatialProcess( loc, nl.norm.lf, Distance = "rdist.earth")
+# 
+# 
+# obj2<- spatialProcess( loc, nl.norm.lf, Distance = "rdist.earth",
+#                        cov.args = list(Covariance ="Exponential")) #nope
+# 
+# obj3<- spatialProcess( loc, nl.norm.lf, Distance = "rdist.earth",
+#                        cov.args = list(Covariance = "Wendland",
+#                                        dimension = 1, k = 1))
+# 
+# obj4<- spatialProcess( loc, nl.norm.lf, Distance = "rdist.earth",
+#                        cov.args = list(Covariance = "Matern"))
+# 
+# rbind(obj.norm$summary, obj2$summary, obj3$summary, obj3$summary)
+# # Plot 1 shows data vs. predicted values, and plot 2 shows predicted values vs.
+# # residuals. Plot 3 shows the criteria to select the smoothing parameter λ = σ
+# # 2/ρ
+# set.panel(1,2)
+# plot(obj.norm)
+# plot(obj2)
+# plot(obj3)
+# plot(obj4)
+# 
+# 
+# obj.raw.tt <- spatialProcess( x = loc, y = nl.lf, Z = tt,
+#                               Distance = "rdist.earth")
+# obj2.raw.tt<- spatialProcess( loc, nl.lf, Distance = "rdist.earth",
+#                               cov.args = list(Covariance ="Exponential"))#nope
+# 
+# obj3.raw.tt<- spatialProcess( loc,  y = nl.lf, Z = tt,
+#                               Distance = "rdist.earth",
+#                               cov.args = list(Covariance = "Wendland",
+#                                               dimension = 1, k = 1))
+# 
+# obj4.raw.tt<- spatialProcess( loc, y = nl.lf, Z = tt,
+#                               Distance = "rdist.earth",
+#                               cov.args = list(Covariance = "Matern"))
+# 
+# 
+# rbind(obj.raw.tt$summary,obj2.raw.tt$summary,obj3.raw.tt$summary,
+#       obj4.raw.tt$summary)
+# 
+# set.panel(1,2)
+# plot(obj.raw.tt)
+# plot(obj2.raw.tt)
+# plot(obj3.raw.tt)
+# plot(obj4.raw.tt)#best
+# 
+# 
+# # Samething but normalized
+# obj.norm.tt <- spatialProcess( x = loc, y = nl.norm.lf, Z = tt,
+#                                Distance = "rdist.earth")
+# obj2.norm.tt<- spatialProcess( loc, nl.norm.lf, Distance = "rdist.earth",
+#                                cov.args = list(Covariance ="Exponential"))
+# 
+# obj3.norm.tt<- spatialProcess( loc,  y = nl.norm.lf, Z = tt,
+#                                Distance = "rdist.earth",
+#                                cov.args = list(Covariance = "Wendland",
+#                                                dimension = 1, k = 1))
+# 
+# obj4.norm.tt<- spatialProcess( loc, y = nl.norm.lf, Z = tt,
+#                                Distance = "rdist.earth",
+#                                cov.args = list(Covariance = "Matern"))
+# 
+# 
+# rbind(obj.norm.tt$summary,
+#       obj2.norm.tt$summary,
+#       obj3.norm.tt$summary,
+#       obj4.norm.tt$summary)
+# 
+# set.panel(1,1)
+# plot(obj.norm.tt)
+# plot(obj2.norm.tt)
+# plot(obj3.norm.tt)
+# plot(obj4.norm.tt)
+# 
+# 
+# # thin plate spline model
 
-# exponential vs Wendland covariance function
-tt = as.numeric(telapsed-mean(telapsed))/60
+predgrd <- list(x = seq(from = min(loc[,1]-.25), to = max(loc[,1]+.25), length.out = 200),
+                y= seq(from = min(loc[,2]-.25), to = max(loc[,2]+.25), length.out = 400))
 
-obj.norm <- spatialProcess( loc, nl.norm.lf, Distance = "rdist.earth")
-
-
-obj2<- spatialProcess( loc, nl.norm.lf, Distance = "rdist.earth",
-                       cov.args = list(Covariance ="Exponential")) #nope
-
-obj3<- spatialProcess( loc, nl.norm.lf, Distance = "rdist.earth",
-                       cov.args = list(Covariance = "Wendland",
-                                       dimension = 1, k = 1))
-
-obj4<- spatialProcess( loc, nl.norm.lf, Distance = "rdist.earth",
-                       cov.args = list(Covariance = "Matern"))
-
-rbind(obj.norm$summary, obj2$summary, obj3$summary, obj3$summary)
-# Plot 1 shows data vs. predicted values, and plot 2 shows predicted values vs.
-# residuals. Plot 3 shows the criteria to select the smoothing parameter λ = σ
-# 2/ρ
-set.panel(1,2)
-plot(obj.norm)
-plot(obj2)
-plot(obj3)
-plot(obj4)
-
-
-obj.raw.tt <- spatialProcess( x = loc, y = nl.lf, Z = tt,
-                              Distance = "rdist.earth")
-obj2.raw.tt<- spatialProcess( loc, nl.lf, Distance = "rdist.earth",
-                              cov.args = list(Covariance ="Exponential"))#nope
-
-obj3.raw.tt<- spatialProcess( loc,  y = nl.lf, Z = tt,
-                              Distance = "rdist.earth",
-                              cov.args = list(Covariance = "Wendland",
-                                              dimension = 1, k = 1))
-
-obj4.raw.tt<- spatialProcess( loc, y = nl.lf, Z = tt,
-                              Distance = "rdist.earth",
-                              cov.args = list(Covariance = "Matern"))
-
-
-rbind(obj.raw.tt$summary,obj2.raw.tt$summary,obj3.raw.tt$summary,
-      obj4.raw.tt$summary)
-
-set.panel(1,2)
-plot(obj.raw.tt)
-plot(obj2.raw.tt)
-plot(obj3.raw.tt)
-plot(obj4.raw.tt)#best
-
-
-# Samething but normalized
-obj.norm.tt <- spatialProcess( x = loc, y = nl.norm.lf, Z = tt,
-                               Distance = "rdist.earth")
-obj2.norm.tt<- spatialProcess( loc, nl.norm.lf, Distance = "rdist.earth",
-                               cov.args = list(Covariance ="Exponential"))
-
-obj3.norm.tt<- spatialProcess( loc,  y = nl.norm.lf, Z = tt,
-                               Distance = "rdist.earth",
-                               cov.args = list(Covariance = "Wendland",
-                                               dimension = 1, k = 1))
-
-obj4.norm.tt<- spatialProcess( loc, y = nl.norm.lf, Z = tt,
-                               Distance = "rdist.earth",
-                               cov.args = list(Covariance = "Matern"))
-
-
-rbind(obj.norm.tt$summary,
-      obj2.norm.tt$summary,
-      obj3.norm.tt$summary,
-      obj4.norm.tt$summary)
-
-set.panel(1,1)
-plot(obj.norm.tt)
-plot(obj2.norm.tt)
-plot(obj3.norm.tt)
-plot(obj4.norm.tt)
-
-
-# thin plate spline model
-obj.TPS.raw <- Tps( loc, nl.lf, Z= tt,lon.lat = TRUE,m = 3)
-out.p <-predictSurface(obj.TPS.raw, grid.list=grd, ZGrid= predgrd, extrap=TRUE)
-
+ obj.TPS.raw <- Tps( loc, nl.lf, Z= tt,lon.lat = TRUE,m = 3)
+ out.p <-predictSurface(obj.TPS.raw, grid.list=grd, ZGrid= predgrd, extrap=TRUE)
+ 
 library(sp)
 library(RColorBrewer)
 image.plot( out.p, col=brewer.pal(9,"RdGy"))
@@ -689,28 +697,32 @@ image.plot( out.p, col=brewer.pal(9,"RdGy"))
 ###########################################################################
 
 
+# 
+# obj4.raw.tt<- spatialProcess( loc, y = nl.lf, Z = s(tt,20),
+#                               Distance = "rdist.earth",
+#                               cov.args = list(Covariance = "Matern"))
 
-obj4.raw.tt<- spatialProcess( loc, y = nl.lf, Z = s(tt,20),
-                              Distance = "rdist.earth",
-                              cov.args = list(Covariance = "Matern"))
-
-predgrd <- list(x = seq(from = min(loc[,1]), to = max(loc[,1]), length.out = 200),
-                y= seq(from = min(loc[,2]), to = max(loc[,2]), length.out = 400),
-                z = matrix(nrow = 200, ncol = 400, data = 3660.63981))
+predgrd <- list(x = seq(from = min(loc[,1]-.25), to = max(loc[,1]+.25), length.out = 200),
+                y= seq(from = min(loc[,2]-.25), to = max(loc[,2]+.25), length.out = 400))
 
 
-out.preds<-predictSurface.Krig(object = obj4.raw.tt, grid.list = grd,
-                               ZGrid = predgrd, 
+
+out.preds<-predictSurface.Krig(object = out7, grid.list = grd,
                                extrap=TRUE) 
 
 image.plot( out.preds, col=larry.colors())
+out.SEs<-predictSurfaceSE(object = out3, grid.list = grd, extrap=TRUE) 
 
-out.SEs<-predictSurfaceSE(object = obj4.raw.tt, grid.list = grd,
-                          ZGrid = predgrd, 
-                          extrap=TRUE) 
-
-
-
+# 
+# out.preds<-predictSurface.Krig(object = obj4.raw.tt, grid.list = grd,
+#                                ZGrid = predgrd, 
+#                                extrap=TRUE) 
+# 
+# image.plot( out.preds, col=larry.colors())
+# 
+# out.SEs<-predictSurfaceSE(object = obj4.raw.tt, grid.list = grd,
+#                           ZGrid = predgrd, 
+#                           extrap=TRUE) 
 
 
 
@@ -1254,8 +1266,6 @@ ggplot(subset(allData, MinDist<=10 & NLpred>65 & NLpred<130),
        aes(y= Lat, x= Lon))+
   facet_wrap(~ElapsedMin, nrow=3)+
   geom_tile(aes(fill= NLpred))
-
-
 
 
 # Dummy for preds while working on it
