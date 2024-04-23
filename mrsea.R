@@ -6,8 +6,10 @@ library(MRSea)
 library(sp)
 library(ggplot2)
 library(lubridate)
+library(geosphere)
 
 #source('//getRadiiSequence.R')
+source("~/GitHub/NL_spatialize/SpatializeNoise/makeDistsHaversine.R")
 ########################################################################
 # Load data, drift GPS, and noise levels pre-process, and wind lease area
 ########################################################################
@@ -169,13 +171,6 @@ ggplot(allNl)+
   facet_wrap(~Band, nrow = 2)+
   theme_bw()
 
-
-
-ggplot(allNl)+
-  geom_line(aes(x=UTC, y=NL, color = response))+
-  scale_color_brewer(palette = 'Paired', name= 'Drift ID')+
-  facet_wrap(~Band, nrow = 2)+
-  theme_bw()
 
 
 
@@ -465,8 +460,7 @@ salsa2dlist<-list(fitnessMeasure = 'BIC',
                   startKnots=20,
                   minKnots=10,
                   maxKnots=40,
-                  gap=0, 
-                  splines = c("ns"))
+                  gap=0)
 
 
 # Gaussian basis
@@ -479,6 +473,25 @@ salsa2dOutput.haversine<-runSALSA2D(hfGLM,
 
 
 
+#################################################################
+# Model checking
+
+ns.data.re$blockid<-paste(ns.data.re$GridCode, ns.data.re$Year, ns.data.re$MonthOfYear, 
+                          ns.data.re$DayOfMonth, sep='')
+ns.data.re$blockid<-as.factor(ns.data.re$blockid)
+
+model<-gamMRSea(birds ~ observationhour + as.factor(floodebb) + as.factor(impact), 
+                family='quasipoisson', data=ns.data.re)
+
+runACF(ns.data.re$blockid, model, suppress.printout=TRUE)
+
+
+
+model<-gamMRSea(response ~ UTC, data=hfNL)
+hfNL$blockid<- (hfNL$UTC); hfNL$blockid <-as.factor(hfNL$blockid)
+
+
+runACF(hfNL$blockid, model)
 
 ####################################################
 # Make Prediction Grid
@@ -510,13 +523,15 @@ preddist_havers <-makeDistsHaversine(
 # make predictions on response scale
 preds<-predict(newdata = nlPredData_havers,
                g2k = preddist_havers,
-               object = salsa2dOutput$bestModel)
+               object = salsa2dOutput.haversine$bestModel)
 
 
 
 
 nlPredData_havers$preds <-preds[,1]
-ggplot(nlPredData_havers[nlPredData$mindist<5000,]) + 
+nlPredData_havers$mindist =(apply(X = preddist_havers, 1, min))
+
+ggplot(nlPredData_havers[nlPredData_havers$mindist<5000,]) +
   geom_tile(aes(x=Lon, y=Lat, fill=preds)) +
   scale_fill_distiller(palette = "Spectral",name="NL Variation") +
   xlab("Easting (km)") + ylab("Northing (km)") + theme_bw()
@@ -539,14 +554,16 @@ salsa2dOutput.havers.exp<-runSALSA2D(hfGLM,
 # make predictions on response scale
 nlPredData_havers$predsHavers.exp<-predict(newdata = nlPredData_havers,
                                g2k = preddist_havers,
-                               object = salsa2dOutput$bestModel)
+                               object = salsa2dOutput.havers.exp$bestModel)
 
-ggplot(nlPredData_havers[nlPredData$mindist<2500,]) + 
-  geom_tile(aes(x=Lon, y=Lat, fill=(predsHavers.exp))) +
+ggplot(nlPredData_havers[nlPredData_havers$mindist<2500,]) + 
+  geom_tile(aes(x=Lon, y=Lat, fill=predsHavers.exp)) +
   scale_fill_distiller(palette = "Spectral",name="NL Variation") +
   xlab("Easting (km)") + ylab("Northing (km)") + theme_bw()
 
 
+
+runDiagnostics(salsa2dOutput.havers.exp)
 
 ################################################################
 # Use variogram to get the central tendency
@@ -557,7 +574,7 @@ ggplot(nlPredData_havers[nlPredData$mindist<2500,]) +
 
 
 rs_havers<-getRadiiSequence(method = "variogram",
-                     numberofradii = 8,
+                     numberofradii = 15,
                      xydata = hfNL[,c("x.pos", "y.pos")],
                      response = hfNL$response,
                      basis = "gaussian",
@@ -577,16 +594,18 @@ rs.exp_havers<-getRadiiSequence(method = "variogram",
 
 
 
-ggplot(nlPredData_havers[nlPredData$mindist<2369,]) + 
-  geom_tile(aes(x=Lon, y=Lat, fill=(predsHavers.exp))) +
+ggplot(nlPredData_havers[nlPredData_havers$mindist<2369,]) + 
+  geom_tile(aes(x=Lon, y=Lat, fill=predsHavers.exp)) +
   scale_fill_distiller(palette = "Spectral",name="NL Variation") +
-  xlab("Easting (km)") + ylab("Northing (km)") + theme_bw()
+  xlab("Easting (km)") + ylab("Northing (km)") + theme_bw()+
+  ggtitle('Exponential')
 
 
-ggplot(nlPredData_havers[nlPredData$mindist<2369,]) + 
-  geom_tile(aes(x=Lon, y=Lat, fill=(preds))) +
+ggplot(nlPredData_havers[nlPredData_havers$mindist<2369,]) + 
+  geom_tile(aes(x=Lon, y=Lat, fill=preds)) +
   scale_fill_distiller(palette = "Spectral",name="NL Variation") +
-  xlab("Easting (km)") + ylab("Northing (km)") + theme_bw()
+  xlab("Easting (km)") + ylab("Northing (km)") + theme_bw()+
+  ggtitle('Gaussian')
 
 
 
@@ -606,10 +625,11 @@ nlPredData_havers$predsHavers.vario<-predict(newdata = nlPredData_havers,
                                            object = salsa2dOutput.vario.haversine$bestModel)
 
 
-ggplot(nlPredData_havers[nlPredData$mindist<2369,]) + 
-  geom_tile(aes(x=Lon, y=Lat, fill=(predsHavers.vario))) +
+ggplot(nlPredData_havers[nlPredData_havers$mindist<2369,]) + 
+  geom_tile(aes(x=Lon, y=Lat, fill=predsHavers.vario)) +
   scale_fill_distiller(palette = "Spectral",name="NL Variation") +
-  xlab("Easting (km)") + ylab("Northing (km)") + theme_bw()
+  xlab("Easting (km)") + ylab("Northing (km)") + theme_bw()+
+  ggtitle('Gaussian: variogram fit')
 
 # Fit of variogram, exponential
 salsa2dlist$r_seq <- rs.exp_havers 
@@ -627,7 +647,7 @@ nlPredData_havers$predsHavers.vario.exp<-predict(newdata = nlPredData_havers,
                                              object = salsa2dOutput.vario.exp.haversine$bestModel)
 
 
-ggplot(nlPredData_havers[nlPredData$mindist<2369,]) + 
+ggplot(nlPredData_havers[nlPredData_havers$mindist<2369,]) + 
   geom_tile(aes(x=Lon, y=Lat, fill=(predsHavers.vario.exp))) +
   scale_fill_distiller(palette = "Spectral",name="NL Variation") +
-  xlab("Easting (km)") + ylab("Northing (km)") + theme_bw()
+  xlab("Easting (km)") + ylab("Northing (km)") + theme_bw()+ggtitle('Exponential: variogram fit')

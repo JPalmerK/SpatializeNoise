@@ -13,6 +13,7 @@ library(lubridate)
 ########################################################################
 # GPS Directory
 csv_directory <- "F:\\GPS_CSV-20230923T045356Z-001\\MorroBay Mar 2023"
+csv_directory <- "C:/Users/kaitlin.palmer/Documents/GitHub/NL_spatialize/SpatializeNoise/GPS_CSV-20230923T045356Z-001/MorroBay Mar 2023/"
 
 # List of the csv files
 csv_files <- list.files(path = csv_directory, 
@@ -174,7 +175,7 @@ lfNL = subset(allNl, Band == '500Hz')
 hfNL = subset(allNl, Band == '20kHz')
 
 
-ggplot(hfNL[idx_critters,])+
+ggplot(hfNL)+
   geom_line(aes(x=UTC, y=NL, color = DriftName))+
   scale_color_brewer(palette = 'Paired', name= 'Drift ID')+
   geom_line(aes(x=UTC, y= NL_ave_mean), color ='black')+
@@ -193,7 +194,7 @@ rm(list=setdiff(ls(), c("allNl", 'lfNL', 'hfNL')))
 allNl <- allNl %>%
   group_by(Band) %>%
   dplyr::arrange(desc(UTC)) %>% 
-  dplyr::mutate(NL_ave = zoo::rollv(NL, k = 211, fill = NA)) %>%
+  dplyr::mutate(NL_ave = zoo::rollmean(NL, k = 211, fill = NA)) %>%
   dplyr::mutate(NL_ave_mean = 20*log10(zoo::rollmean(10^(NL/20), k = 211, fill = NA))) %>%
   ungroup()
 

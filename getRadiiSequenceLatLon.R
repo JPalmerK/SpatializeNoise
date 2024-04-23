@@ -62,7 +62,7 @@
 #' #' 
 
 
-getRadiiSequence<-function(method=NULL, numberofradii=10, 
+getRadiiSequenceLatLon<-function(method=NULL, numberofradii=10, 
                            distMatrix, basis,
                            rvin=NULL,
                            xydata, response, 
@@ -83,6 +83,8 @@ getRadiiSequence<-function(method=NULL, numberofradii=10,
     names(data) <- c("x", "y", "response")
     
     sp::coordinates(data) = ~x + y
+    proj4string(data) <- "+init=epsg:4326"
+    
     suppressWarnings({
       vg <- gstat::variogram(response ~ 1, data, alpha= alpha, ...)
       fit.vg <- try(gstat::fit.variogram(vg, model=gstat::vgm(vgmmodel)), silent = TRUE)
