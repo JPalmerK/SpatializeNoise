@@ -77,6 +77,15 @@ noiseDf$UTC <- as.POSIXct(noiseDf$UTC,
 GPSdf= subset(GPSdf, DriftName %in% noiseDf$DriftName)
 noiseDf= subset(noiseDf, DriftName %in% GPSdf$DriftName)
 
+nlLong =noiseDf[,c(1,8:25)] %>% 
+  pivot_longer(cols = TOL_500: TOL_20000,
+               names_to = 'Frequency',names_prefix = 'TOL_',
+               values_to = 'metric')
+nlLong$Dummy = as.factor(nlLong$Frequency)
+
+ggplot(nlLong)+
+  facet_wrap(~DriftName,ncol = 1)+
+  geom_tile(aes(x=UTC, y= Frequency, fill = metric))
 
 noise500 = noiseDf[, c(1,8, 25)]
 noise20k = noiseDf[, c(1,24, 25)]
@@ -375,6 +384,20 @@ ggplot(nlPredData_havers[nlPredData_havers$mindist<attr(rs_havers, 'vg.fit')[[3]
   theme_bw()
 
 
+figData1 = allNl[,c('Lat', 'Lon', 'Band','NL')]
+figData2 = allNl[,c('Lat', 'Lon', 'Band','response')]
+colnames(figData1)[4]<-'Noise Metric'
+colnames(figData2)[4]<-'Noise Metric'
+
+figData = rbind(figData1, figData2) 
+figData$panel = paste0(figData$Band, figData$`Noise Metric`)
+
+
+ggplot(figData)+
+  geom_point(aes(y=Lat, x=Lon, color = 'Noise Metric'))+
+  facet_wrap(~panel, nrow =2)+
+  scale_color_distiller(palette = "Spectral",name="Noise Level (dB)")+
+  theme_bw()
 
 
 # Fit of variogram, gaussian
@@ -398,8 +421,10 @@ nlPredData_havers$predsHavers.vario<-predict(newdata = nlPredData_havers,
 ggplot(nlPredData_havers[nlPredData_havers$mindist<2760.64,]) + 
   geom_tile(aes(x=Lon, y=Lat, fill=predsHavers.vario)) +
   scale_fill_distiller(palette = "Spectral",name="NL Variation") +
-  xlab("Easting (km)") + ylab("Northing (km)") + theme_bw()+
+  xlab("Longitude") + ylab("Latitude") + theme_bw()+
   ggtitle('Gaussian: variogram fit')
+
+
 
 #########################################################################
 # Cross validation
