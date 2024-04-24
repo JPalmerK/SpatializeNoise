@@ -15,6 +15,36 @@
                 "type": 1,
                 "is_package_breakpoint": false,
                 "package_name": ""
+            },
+            {
+                "id": 5,
+                "path": "C:/Users/kaitlin.palmer/Documents/GitHub/SAEL/R Code/westCoastRegionPlot.R",
+                "line_number": 29,
+                "function_steps": "",
+                "function_name": "toplevel",
+                "state": 1,
+                "editor_state": 1,
+                "editor_line_number": 29,
+                "is_pending_debug_completion": false,
+                "needs_updated_steps": true,
+                "type": 1,
+                "is_package_breakpoint": false,
+                "package_name": ""
+            },
+            {
+                "id": 6,
+                "path": "C:/Users/kaitlin.palmer/Documents/GitHub/RegionPlot/westCoastRegionPlot.R",
+                "line_number": 123,
+                "function_steps": "",
+                "function_name": "toplevel",
+                "state": 1,
+                "editor_state": 1,
+                "editor_line_number": 123,
+                "is_pending_debug_completion": false,
+                "needs_updated_steps": true,
+                "type": 1,
+                "is_package_breakpoint": false,
+                "package_name": ""
             }
         ]
     }

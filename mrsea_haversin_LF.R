@@ -347,9 +347,13 @@ rs_havers<-getRadiiSequence(method = "variogram",
 
 ggplot(nlPredData_havers[nlPredData_havers$mindist<attr(rs_havers, 'vg.fit')[[3]][[2]],]) + 
   geom_tile(aes(x=Lon, y=Lat, fill=preds)) +
-  scale_fill_distiller(palette = "Spectral",name="NL Variation") +
-  xlab("Longitude") + ylab("Latitude") + theme_bw()+
-  ggtitle('Gaussian Low Frequency (500Hz)')
+  scale_fill_distiller(palette = "Spectral",name="NL Variation",
+                       limits=c(-4, 6)) +
+  xlab("Longitude") + ylab("Latitude") + 
+  geom_path(data = lfNL, aes(y=Lat, x=Lon, group = DriftName), 
+            color = 'gray40')+
+  ggtitle('Gaussian Low Frequency (500Hz)')+
+  theme_bw()
 
 
 
@@ -375,7 +379,9 @@ ggplot(nlPredData_havers[nlPredData_havers$mindist<attr(rs_havers, 'vg.fit')[[3]
   geom_tile(aes(x=Lon, y=Lat, fill=predsHavers.vario)) +
   scale_fill_distiller(palette = "Spectral",name="NL Variation") +
   xlab("Easting (km)") + ylab("Northing (km)") + theme_bw()+
-  ggtitle('Gaussian: variogram fit')
+  ggtitle('Gaussian: variogram fit')+
+  geom_path(data = lfNL, aes(y=Lat, x=Lon, group = DriftName), 
+            color = 'gray60')
 
 #########################################################################
 # Cross validation
